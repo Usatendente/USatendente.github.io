@@ -156,6 +156,23 @@ const U=.04,CX=382,CZ=366,wx=p=>(p-CX)*U,wz=p=>(p-CZ)*U,Y3=.4;
 const P1=[[324,250,28,28,45,2],[412,250,28,28,45,2],[501,248,28,28,45,2],[578,248,28,28,45,2],[690,173,24,24,0,2],[690,210,24,24,0,2],[675,251,54,24,0,2]];
 const P2=[[301,309,25,25,0,1],[375,310,25,25,0,1],[467,309,25,25,0,1],[677,321,25,54,0,4],[462,398,28,28,45,1],[551,397,28,28,45,1],[655,396,28,28,45,1],[120,325,80,68,0,2,"o"]];
 const P3=[[187,461,25,25,0,2],[187,550,25,25,0,2],[319,440,25,25,0,2],[318,498,25,62,0,1],[319,566,25,25,0,2],[395,498,25,62,0,1],[463,440,25,25,0,2],[547,508,80,68,0,2,"o"],[462,566,25,25,0,2],[567,440,25,25,0,2],[566,567,25,25,0,2],[680,445,25,25,0,2],[678,503,25,25,0,2],[677,561,25,25,0,2]];
+const NKEY="comanda-3d-num-v1",NUM_DEF=null;/* NUM_DEF: cole aqui a lista copiada em "Copiar numeração" para valer em todos os aparelhos */
+const defNum=()=>{const r=[];[[P1,1],[P2,15],[P3,25]].forEach(a=>a[0].forEach((_,k)=>r.push(a[1]+k)));return r};
+const validNum=a=>Array.isArray(a)&&a.length===defNum().length&&a.every(x=>Number.isInteger(x)&&x>=1&&x<=50)&&new Set(a).size===a.length;
+function loadNum(){try{const a=JSON.parse(localStorage.getItem(NKEY));if(validNum(a))return a}catch(e){}return validNum(NUM_DEF)?NUM_DEF.slice():defNum()}
+let NUM=loadNum(),numMode=false;
+const saveNum=()=>{try{localStorage.setItem(NKEY,JSON.stringify(NUM))}catch(e){}};
+function syncNum(){const b=$("#vNum");if(!b)return;b.textContent=numMode?"Concluir numeração":"Numerar mesas";b.classList.toggle("out",numMode);$("#vNumT").style.display=numMode?"flex":"none";
+ $("#v3n").textContent=numMode?"Modo numeração: toque numa mesa para definir o número. Fica salvo neste aparelho.":"Toque numa mesa para anotar o pedido. Arraste para girar. Role o mouse ou use dois dedos para ampliar."}
+function tapT(i){
+ if(!numMode){openT(NUM[i]);return}
+ const d=$("#ed");
+ $("#edw").innerHTML=`<div class="mb"><div class="mh"><h3>Número da mesa</h3><button class="link" data-close>Fechar</button></div><div class="tb">Escolha de 1 a 50. Se o número já estiver em outra mesa, as duas trocam de número.</div><input id="nn" type="number" inputmode="numeric" min="1" max="50" value="${NUM[i]}" aria-label="Número da mesa" style="display:block;width:100%;margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:8px;font:700 28px GeneralSans,system-ui,sans-serif;background:#fff"><div class="btns"><button class="pill" id="nok">Salvar número</button></div></div>`;
+ const f=$("#nn");
+ $("#nok").onclick=()=>{const v=Math.round(+f.value);if(!(v>=1&&v<=50)){f.focus();return}const j=NUM.indexOf(v);if(j>=0&&j!==i){NUM[j]=NUM[i];T3.lab(j)}NUM[i]=v;T3.lab(i);saveNum();d.close()};
+ f.onkeydown=e=>{if(e.key==="Enter")$("#nok").click()};
+ d.showModal();f.select();
+}
 function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 function label(t,sx,dark,cw){cw=cw||256;const c=document.createElement("canvas");c.width=cw;c.height=96;const g=c.getContext("2d");
  g.fillStyle=dark?"rgba(17,17,17,.92)":"#fff";rr(g,4,4,cw-8,88,28);g.fill();g.strokeStyle="#111";g.lineWidth=5;g.stroke();
@@ -185,11 +202,9 @@ function init3(){
  bx(42,148,720,280,-.1,.1,texWood(42,148,720,280));
  bx(42,280,720,422,-.1,.1,texCem(42,280,720,422));
  bx(143,422,725,585,-.5,.9,texWood(143,422,725,585));
- const wl=(a,b,c,d)=>bx(a,b,c,d,-.5,3.9,0xffffff,.18);
- wl(38,144,724,148);wl(38,148,42,507);wl(720,148,724,422);wl(143,422,147,585);wl(143,585,725,589);wl(42,507,143,511);
  const wall=(a,b)=>bx(a,148,b,157,0,3.2,0xe8e8e8);
  const sig=(t,a,b)=>tag(t,wx((a+b)/2),3.75,wz(152),2.1,true,512);
- wall(42,720);
+ wall(42,658);
  bx(54,157,134,171,0,1.1,0x5a3620);bx(52,157,136,173,1.1,.08,0xdedede);bx(80,160,98,168,1.18,.3,0x222222);bx(82,160.5,96,162.5,1.45,.3,0x111111);bx(56,157,132,158.4,1.6,1.3,0x3a3f44,.55);sig("CAIXA",42,146);
  bx(152,157,281,169,0,1.15,0x3a3a3a);bx(150,157,283,171,1.15,.08,0xd0d0d0);bx(160,157,272,158.4,1.5,1.9,0x2b2b2b);
  [1.9,2.55].forEach((y,j)=>{bx(160,157,272,161,y,.05,0xb08a5a);for(let i=0;i<12;i++){const b=new THREE.Mesh(new THREE.CylinderGeometry(.06,.07,.38,10),M([0x2f6b3a,0x8a4b12,0x1f3f7a,0x9aa0a6][(i+j)%4]));b.position.set(wx(166+i*9),y+.24,wz(159));sc.add(b)}});sig("COPA",147,286);
@@ -198,19 +213,17 @@ function init3(){
  wc(398,444,"BANHEIRO MASC.");wc(612,658,"BANHEIRO FEM.");
  bx(478,157,578,158.1,.95,2.0,0x222222);bx(481,158.1,575,158.6,1,1.9,0xffffff);
  bx(527,200,529,202,3.28,.12,0x555555);bx(518,196,538,208,3,.28,0xf2f2f2);bx(526,194,530,196,3.08,.12,0x111111);sig("DATA SHOW",480,576);
- const gl=(a,b,c,d,y0,h)=>bx(a,b,c,d,y0,h,0xa9d4ff,.35);
- gl(42,280,157,286,0,1.8);gl(270,280,478,286,0,1.8);gl(633,280,720,286,0,1.8);gl(243,416,712,421,0,1.8);gl(712,416,725,585,.4,2.2);
  [[402,.13],[408.7,.27],[415.3,.4]].forEach(a=>bx(183,a[0],235,a[0]+6.7,0,a[1],texWood(183,402,235,422)));
  tag("ESCADA",wx(209),1,wz(405),1.2,true,512);
- const rg=new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(0,-.5),new THREE.Vector2(85*U,-.5),new THREE.Vector2(85*U,.4),new THREE.Vector2(0,0)]),{depth:101*U,bevelEnabled:false});
- const rp=new THREE.Mesh(rg,M(0xa6a6a6));rp.rotation.y=Math.PI/2;rp.position.set(wx(42),0,wz(507));sc.add(rp);tag("RAMPA",wx(92),1.1,wz(465),1.4,true,512);
+ const rg=new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(0,-.5),new THREE.Vector2(163*U,-.5),new THREE.Vector2(163*U,.4),new THREE.Vector2(0,0)]),{depth:101*U,bevelEnabled:false});
+ const rp=new THREE.Mesh(rg,M(0xa6a6a6));rp.rotation.y=Math.PI/2;rp.position.set(wx(42),0,wz(585));sc.add(rp);tag("RAMPA",wx(92),1,wz(503),1.4,true,512);
   const mt=new THREE.Group(),tr=new THREE.TorusGeometry(.42,.12,12,24);
  [-1.05,1.05].forEach(x=>{const w=new THREE.Mesh(tr,M(0x222222));w.position.set(x,.54,0);mt.add(w)});
  const pt=(w,h,d,x,y,z,c)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c||0x222222));m.position.set(x,y,z);mt.add(m)};
  pt(1.5,.22,.3,0,.7,0);pt(.8,.35,.5,.15,.95,0);pt(.9,.14,.34,-.55,1.1,0,0x222222);pt(.14,.7,.14,.95,.9,0,0x888888);pt(.12,.12,.8,.9,1.3,0,0x222222);pt(.5,.4,.4,0,.45,0,0x777777);
  mt.scale.set(1.15,1.15,1.15);mt.rotation.y=Math.PI/4;mt.position.set(wx(100),0,wz(225));sc.add(mt);
  tag("SETOR 1",wx(90),.25,wz(268),1.6,true,512);tag("SETOR 2",wx(215),.25,wz(300),1.6,true,512);tag("SETOR 3",wx(250),.65,wz(505),1.6,true,512);
- const tabs=[],pk=[];let n=1;
+ const tabs=[],pk=[],TP=[],LB=[];let ti=0;
  [P1,P2,P3].forEach(L=>L.forEach(p=>{const cx=p[0],cy=p[1],k=1,S=1.15,W=p[2]*U*S,H=p[3]*U*S,g=new THREE.Group();
   g.position.set(wx(cx),cy>418&&cx>143?Y3:0,wz(cy));g.rotation.y=-p[4]*Math.PI/180;
   const ax=W>=H;
@@ -218,22 +231,23 @@ function init3(){
    const geo=p[6]==="o"?new THREE.CylinderGeometry(.5,.5,.07,28):new THREE.BoxGeometry(sw-.05,.07,sd-.05);
    const mat=new THREE.MeshStandardMaterial({color:0x5a3620,roughness:.55}),top=new THREE.Mesh(geo,mat);
    if(p[6]==="o")top.scale.set(sw-.05,1,sd-.05);
-   top.position.set(ox,.55,oz);top.userData.n=n;
+   top.position.set(ox,.55,oz);top.userData.i=ti;pk.push(top);tabs.push({mat,i:ti});
    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,.55,10),M(0x34200f));leg.position.set(ox,.27,oz);
    g.add(top,leg)}
-  sc.add(g)}));
+  TP[ti]=[wx(cx),(cy>418&&cx>143?Y3:0)+.95,wz(cy)];ti++;sc.add(g)}));
+ const setLab=i=>{if(LB[i]){sc.remove(LB[i]);LB[i].material.map.dispose();LB[i].material.dispose()}const l=label(p2(NUM[i]),1.3,true,256);l.position.set(...TP[i]);sc.add(l);LB[i]=l};
  const el=R.domElement;
- T3={el,R,cam,sc,tabs,pick:pk,th:0,phi:1,r:0,r0:34,hov:null,run:true,w:0,h:0};
+ T3={el,R,cam,sc,tabs,pick:pk,th:0,phi:1,r:0,r0:34,hov:null,run:true,w:0,h:0,lab:setLab,labAll:()=>{for(let i=0;i<ti;i++)setLab(i)}};T3.labAll();
  slot.innerHTML="";slot.appendChild(el);
  const ptr=new Map(),ray=new THREE.Raycaster(),v=new THREE.Vector2();let mv=0;
- const pick=e=>{const b=el.getBoundingClientRect();v.set((e.clientX-b.left)/b.width*2-1,-((e.clientY-b.top)/b.height)*2+1);ray.setFromCamera(v,cam);const h=ray.intersectObjects(T3.pick,false)[0];return h?h.object.userData.n:null};
+ const pick=e=>{const b=el.getBoundingClientRect();v.set((e.clientX-b.left)/b.width*2-1,-((e.clientY-b.top)/b.height)*2+1);ray.setFromCamera(v,cam);const h=ray.intersectObjects(T3.pick,false)[0];return h?h.object.userData.i:null};
  el.addEventListener("pointerdown",e=>{el.setPointerCapture(e.pointerId);ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});mv=0});
  el.addEventListener("pointermove",e=>{const p=ptr.get(e.pointerId);
-  if(!p)return;
+  if(!p){if(e.pointerType==="mouse"){T3.hov=pick(e);el.style.cursor=T3.hov!=null?"pointer":"grab"}return}
   if(ptr.size===1){const dx=e.clientX-p.x,dy=e.clientY-p.y;mv+=Math.abs(dx)+Math.abs(dy);T3.th-=dx*.006;T3.phi=Math.min(1.5,Math.max(.1,T3.phi-dy*.006))}
   else if(ptr.size===2){const o=[...ptr.entries()].find(a=>a[0]!==e.pointerId)[1],d0=Math.hypot(p.x-o.x,p.y-o.y),d1=Math.hypot(e.clientX-o.x,e.clientY-o.y);if(d1)T3.r=Math.min(70,Math.max(10,T3.r*d0/d1));mv+=10}
   p.x=e.clientX;p.y=e.clientY});
- el.addEventListener("pointerup",e=>{ptr.delete(e.pointerId);});
+ el.addEventListener("pointerup",e=>{if(ptr.has(e.pointerId)&&ptr.size===1&&mv<8){const i=pick(e);if(i!=null)tapT(i)}ptr.delete(e.pointerId)});
  el.addEventListener("pointercancel",e=>ptr.delete(e.pointerId));
  el.addEventListener("wheel",e=>{e.preventDefault();T3.r=Math.min(70,Math.max(10,T3.r*(1+e.deltaY*.001)))},{passive:false});
  loop3();
@@ -246,13 +260,18 @@ function loop3(){
  const r=T3.r||T3.r0,s=Math.sin(T3.phi);
  T3.cam.position.set(r*s*Math.sin(T3.th),r*Math.cos(T3.phi),r*s*Math.cos(T3.th));T3.cam.lookAt(0,.4,0);
  const k=(Math.sin(performance.now()/330)+1)/2,a=new THREE.Color(0xcc3300).lerp(new THREE.Color(0xf58634),k);
- T3.tabs.forEach(o=>{if(occ(o.n))o.mat.color.copy(a);else o.mat.color.setHex(o.n===T3.hov?0xdddddd:0xffffff)});
+ T3.tabs.forEach(o=>{if(numMode)o.mat.color.setHex(o.i===T3.hov?0xffd9a0:0xdbe8ff);else if(occ(NUM[o.i]))o.mat.color.copy(a);else o.mat.color.setHex(o.i===T3.hov?0xdddddd:0xffffff)});
  T3.R.render(T3.sc,T3.cam);
 }
 function show3D(){
  const main=$("#main");
  if(!$("#v3slot")){
-  main.innerHTML=`<div class="v3top"><div class="v3b"><button class="pill sm out" id="vTop">Visão de cima</button><button class="pill sm out" id="vRst">Restaurar</button></div></div><div id="v3slot" class="v3slot"></div><p class="note">Arraste para girar. Role o mouse ou use dois dedos para ampliar.</p>`;
+  main.innerHTML=`<div class="v3top"><div class="v3b"><button class="pill sm out" id="vTop">Visão de cima</button><button class="pill sm out" id="vRst">Restaurar</button><button class="pill sm" id="vNum">Numerar mesas</button></div><div class="v3b" id="vNumT" style="display:none;margin-top:8px"><button class="pill sm out" id="vCp">Copiar numeração</button><button class="pill sm out" id="vPs">Colar numeração</button><button class="pill sm out" id="vDf">Numeração padrão</button></div></div><div id="v3slot" class="v3slot"></div><p class="note" id="v3n"></p>`;
+  $("#vNum").onclick=()=>{numMode=!numMode;syncNum()};
+  $("#vCp").onclick=()=>{const t=NUM.join(",");(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{$("#v3n").textContent="Numeração copiada: "+t}).catch(()=>prompt("Copie a numeração:",t))};
+  $("#vPs").onclick=()=>{const t=prompt("Cole a numeração (números separados por vírgula):");if(t==null)return;const a=t.split(/[^0-9]+/).filter(Boolean).map(Number);if(!validNum(a)){alert("Numeração inválida.");return}NUM=a;saveNum();if(T3)T3.labAll()};
+  $("#vDf").onclick=()=>{if(confirm("Voltar à numeração padrão por setor?")){NUM=defNum();saveNum();if(T3)T3.labAll()}};
+  syncNum();
   $("#vTop").onclick=()=>{if(T3){T3.phi=.12;T3.th=0}};
   $("#vRst").onclick=()=>{if(T3){T3.phi=1;T3.th=0;T3.r=T3.r0}};
  }
