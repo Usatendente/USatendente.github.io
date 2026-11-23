@@ -156,20 +156,20 @@ const U=.04,CX=382,CZ=366,wx=p=>(p-CX)*U,wz=p=>(p-CZ)*U,Y3=.4;
 const P1=[[324,250,28,28,45,2],[412,250,28,28,45,2],[501,248,28,28,45,2],[578,248,28,28,45,2],[690,173,24,24,0,2],[690,210,24,24,0,2],[675,251,54,24,0,2]];
 const P2=[[301,309,25,25,0,1],[375,310,25,25,0,1],[467,309,25,25,0,1],[677,321,25,54,0,4],[462,398,28,28,45,1],[551,397,28,28,45,1],[655,396,28,28,45,1],[120,325,80,68,0,2,"o"]];
 const P3=[[187,461,25,25,0,2],[187,550,25,25,0,2],[319,440,25,25,0,2],[318,498,25,62,0,1],[319,566,25,25,0,2],[395,498,25,62,0,1],[463,440,25,25,0,2],[547,508,80,68,0,2,"o"],[462,566,25,25,0,2],[567,440,25,25,0,2],[566,567,25,25,0,2],[680,445,25,25,0,2],[678,503,25,25,0,2],[677,561,25,25,0,2]];
-const NKEY="comanda-3d-num-v1",NUM_DEF=null;/* NUM_DEF: cole aqui a lista copiada em "Copiar numeração" para valer em todos os aparelhos */
-const defNum=()=>{const r=[];[[P1,1],[P2,15],[P3,25]].forEach(a=>a[0].forEach((_,k)=>r.push(a[1]+k)));return r};
-const validNum=a=>Array.isArray(a)&&a.length===defNum().length&&a.every(x=>Number.isInteger(x)&&x>=1&&x<=50)&&new Set(a).size===a.length;
+const NKEY="comanda-3d-num-v2",NUM_DEF=null;/* NUM_DEF: cole aqui a lista de "Copiar numeração" (0 = sem número) para valer em todos os aparelhos */
+const nT=()=>P1.length+P2.length+P3.length,defNum=()=>Array(nT()).fill(null);
+const validNum=a=>{if(!Array.isArray(a)||a.length!==nT()||!a.every(x=>x===null||Number.isInteger(x)&&x>=1&&x<=50))return false;const b=a.filter(x=>x!==null);return new Set(b).size===b.length};
 function loadNum(){try{const a=JSON.parse(localStorage.getItem(NKEY));if(validNum(a))return a}catch(e){}return validNum(NUM_DEF)?NUM_DEF.slice():defNum()}
-let NUM=loadNum(),numMode=false;
+let NUM=loadNum(),numMode=NUM.some(x=>x===null);
 const saveNum=()=>{try{localStorage.setItem(NKEY,JSON.stringify(NUM))}catch(e){}};
-function syncNum(){const b=$("#vNum");if(!b)return;b.textContent=numMode?"Concluir numeração":"Numerar mesas";b.classList.toggle("out",numMode);$("#vNumT").style.display=numMode?"flex":"none";
- $("#v3n").textContent=numMode?"Modo numeração: toque numa mesa para definir o número. Fica salvo neste aparelho.":"Toque numa mesa para anotar o pedido. Arraste para girar. Role o mouse ou use dois dedos para ampliar."}
+function syncNum(){const b=$("#vNum");if(!b)return;const c=NUM.filter(x=>x!==null).length;b.textContent=numMode?"Concluir numeração":"Numerar mesas";b.classList.toggle("out",numMode);$("#vNumT").style.display=numMode?"flex":"none";
+ $("#v3n").textContent=numMode?"Modo numeração: toque numa mesa e digite o número. "+c+" de "+nT()+" mesas numeradas (as com “?” ainda não têm número). Fica salvo neste aparelho.":"Toque numa mesa para anotar o pedido. Arraste para girar. Role o mouse ou use dois dedos para ampliar."}
 function tapT(i){
- if(!numMode){openT(NUM[i]);return}
+ if(!numMode&&NUM[i]!==null){openT(NUM[i]);return}
  const d=$("#ed");
- $("#edw").innerHTML=`<div class="mb"><div class="mh"><h3>Número da mesa</h3><button class="link" data-close>Fechar</button></div><div class="tb">Escolha de 1 a 50. Se o número já estiver em outra mesa, as duas trocam de número.</div><input id="nn" type="number" inputmode="numeric" min="1" max="50" value="${NUM[i]}" aria-label="Número da mesa" style="display:block;width:100%;margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:8px;font:700 28px GeneralSans,system-ui,sans-serif;background:#fff"><div class="btns"><button class="pill" id="nok">Salvar número</button></div></div>`;
+ $("#edw").innerHTML=`<div class="mb"><div class="mh"><h3>Número da mesa</h3><button class="link" data-close>Fechar</button></div><div class="tb">Digite de 1 a 50. Se o número já estiver em outra mesa, ela fica com o número desta. Deixe vazio para tirar o número.</div><input id="nn" type="number" inputmode="numeric" min="1" max="50" value="${NUM[i]===null?"":NUM[i]}" aria-label="Número da mesa" style="display:block;width:100%;margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:8px;font:700 28px GeneralSans,system-ui,sans-serif;background:#fff"><div class="btns"><button class="pill" id="nok">Salvar número</button></div></div>`;
  const f=$("#nn");
- $("#nok").onclick=()=>{const v=Math.round(+f.value);if(!(v>=1&&v<=50)){f.focus();return}const j=NUM.indexOf(v);if(j>=0&&j!==i){NUM[j]=NUM[i];T3.lab(j)}NUM[i]=v;T3.lab(i);saveNum();d.close()};
+ $("#nok").onclick=()=>{const v=f.value.trim()===""?null:Math.round(+f.value);if(v!==null&&!(v>=1&&v<=50)){f.focus();return}const j=v===null?-1:NUM.indexOf(v);if(j>=0&&j!==i){NUM[j]=NUM[i];T3.lab(j)}NUM[i]=v;T3.lab(i);saveNum();syncNum();d.close()};
  f.onkeydown=e=>{if(e.key==="Enter")$("#nok").click()};
  d.showModal();f.select();
 }
@@ -235,7 +235,7 @@ function init3(){
    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,.55,10),M(0x34200f));leg.position.set(ox,.27,oz);
    g.add(top,leg)}
   TP[ti]=[wx(cx),(cy>418&&cx>143?Y3:0)+.95,wz(cy)];ti++;sc.add(g)}));
- const setLab=i=>{if(LB[i]){sc.remove(LB[i]);LB[i].material.map.dispose();LB[i].material.dispose()}const l=label(p2(NUM[i]),1.3,true,256);l.position.set(...TP[i]);sc.add(l);LB[i]=l};
+ const setLab=i=>{if(LB[i]){sc.remove(LB[i]);LB[i].material.map.dispose();LB[i].material.dispose()}const l=label(NUM[i]===null?"?":p2(NUM[i]),1.3,NUM[i]!==null,256);l.position.set(...TP[i]);sc.add(l);LB[i]=l};
  const el=R.domElement;
  T3={el,R,cam,sc,tabs,pick:pk,th:0,phi:1,r:0,r0:34,hov:null,run:true,w:0,h:0,lab:setLab,labAll:()=>{for(let i=0;i<ti;i++)setLab(i)}};T3.labAll();
  slot.innerHTML="";slot.appendChild(el);
@@ -266,11 +266,11 @@ function loop3(){
 function show3D(){
  const main=$("#main");
  if(!$("#v3slot")){
-  main.innerHTML=`<div class="v3top"><div class="v3b"><button class="pill sm out" id="vTop">Visão de cima</button><button class="pill sm out" id="vRst">Restaurar</button><button class="pill sm" id="vNum">Numerar mesas</button></div><div class="v3b" id="vNumT" style="display:none;margin-top:8px"><button class="pill sm out" id="vCp">Copiar numeração</button><button class="pill sm out" id="vPs">Colar numeração</button><button class="pill sm out" id="vDf">Numeração padrão</button></div></div><div id="v3slot" class="v3slot"></div><p class="note" id="v3n"></p>`;
+  main.innerHTML=`<div class="v3top"><div class="v3b"><button class="pill sm out" id="vTop">Visão de cima</button><button class="pill sm out" id="vRst">Restaurar</button><button class="pill sm" id="vNum">Numerar mesas</button></div><div class="v3b" id="vNumT" style="display:none;margin-top:8px"><button class="pill sm out" id="vCp">Copiar numeração</button><button class="pill sm out" id="vPs">Colar numeração</button><button class="pill sm out" id="vDf">Limpar numeração</button></div></div><div id="v3slot" class="v3slot"></div><p class="note" id="v3n"></p>`;
   $("#vNum").onclick=()=>{numMode=!numMode;syncNum()};
-  $("#vCp").onclick=()=>{const t=NUM.join(",");(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{$("#v3n").textContent="Numeração copiada: "+t}).catch(()=>prompt("Copie a numeração:",t))};
-  $("#vPs").onclick=()=>{const t=prompt("Cole a numeração (números separados por vírgula):");if(t==null)return;const a=t.split(/[^0-9]+/).filter(Boolean).map(Number);if(!validNum(a)){alert("Numeração inválida.");return}NUM=a;saveNum();if(T3)T3.labAll()};
-  $("#vDf").onclick=()=>{if(confirm("Voltar à numeração padrão por setor?")){NUM=defNum();saveNum();if(T3)T3.labAll()}};
+  $("#vCp").onclick=()=>{const t=NUM.map(x=>x===null?0:x).join(",");(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{$("#v3n").textContent="Numeração copiada: "+t}).catch(()=>prompt("Copie a numeração:",t))};
+  $("#vPs").onclick=()=>{const t=prompt("Cole a numeração (números separados por vírgula):");if(t==null)return;const a=t.split(",").map(x=>x.trim()).map(x=>x===""||x==="0"?null:Number(x));if(!validNum(a)){alert("Numeração inválida.");return}NUM=a;saveNum();syncNum();if(T3)T3.labAll()};
+  $("#vDf").onclick=()=>{if(confirm("Apagar o número de todas as mesas?")){NUM=defNum();saveNum();syncNum();if(T3)T3.labAll()}};
   syncNum();
   $("#vTop").onclick=()=>{if(T3){T3.phi=.12;T3.th=0}};
   $("#vRst").onclick=()=>{if(T3){T3.phi=1;T3.th=0;T3.r=T3.r0}};
