@@ -128,7 +128,7 @@ textarea:focus{border-color:var(--red)}
 <dialog id="sd"><div class="mb"><div class="mh"><h3>Buscar mesa</h3><button class="link" id="sx">Fechar</button></div><div class="tb">Digite o número da mesa (1 a 50) para abrir a comanda dela.</div><input id="sn" type="number" inputmode="numeric" min="1" max="50" aria-label="Número da mesa" style="display:block;width:100%;margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:8px;font:700 28px GeneralSans,system-ui,sans-serif;background:#fff"><div class="btns"><button class="pill" id="sok">Abrir mesa</button></div></div></dialog>
 <dialog id="pd"><div class="mb pd">
  <div class="mh"><h3>Gerar PDF</h3></div>
- <p>Cada mesa sai identificada com número e setor. Na janela de impressão, escolha “Salvar como PDF”.</p>
+ <p>Cada mesa sai identificada com número e setor. O arquivo PDF é gerado no aparelho: no celular abre o menu de compartilhar (Salvar em Arquivos, WhatsApp, Imprimir…); no computador ele é baixado.</p>
  <div class="btns"><button class="pill" data-pdf="occ">Somente mesas ocupadas</button><button class="pill out" data-pdf="all">Todas as 50 mesas</button><button class="link" data-pdf="x">Cancelar</button></div>
 </div></dialog>
 <div id="print"></div>
@@ -361,13 +361,53 @@ function draw(n,i){
  if($("#fall"))arm($("#fall"),()=>"Finalizar a mesa inteira",()=>"Confirmar: limpar todas",()=>{delete D[n];save();d.close()});
  if(!ta.value&&!nm.value)nm.focus();else if(!ta.value)ta.focus();
 }
+/* PDF gerado direto no aparelho (arquivo real). Imprimir/“Salvar como PDF” não funciona em vários celulares nem no app instalado. */
+const W1252={0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,0x017E:0x9E,0x0178:0x9F};
+const pdfHex=t=>{let r="";for(const ch of t){let c=ch.codePointAt(0);if(W1252[c])c=W1252[c];else if(c>255||(c>=0x80&&c<=0x9F))c=63;if(c<32)c=32;r+=c.toString(16).padStart(2,"0")}return"<"+r+">"};
+function mkPdf(blocks,title,sub){
+ const PW=595,PH=842,M=42,CW=PW-2*M,cv=document.createElement("canvas").getContext("2d");
+ const wd=(t,sz,b)=>{cv.font=(b?"bold ":"")+sz+"px Helvetica,Arial,sans-serif";return cv.measureText(t).width};
+ const pages=[];let ops,y;
+ const np=()=>{ops=[];pages.push(ops);y=PH-M};
+ const txt=(t,x,sz,b,g)=>ops.push(`BT ${g||0} g /F${b?2:1} ${sz} Tf ${x.toFixed(1)} ${y.toFixed(1)} Td ${pdfHex(t)} Tj ET`);
+ const MW=CW-20;
+ const wrap=(t,sz)=>{const out=[];t.split("\n").forEach(par=>{if(!par.trim()){out.push("");return}let line="";par.split(/\s+/).forEach(w=>{if(!w)return;const tl=line?line+" "+w:w;if(wd(tl,sz)<=MW){line=tl;return}if(line)out.push(line);line="";while(wd(w,sz)>MW){let k=w.length;while(k>1&&wd(w.slice(0,k),sz)>MW)k--;out.push(w.slice(0,k));w=w.slice(k)}line=w});out.push(line)});return out};
+ np();txt(title,M,18,1);y-=16;txt(sub,M,9,0,.4);y-=26;
+ const lh=15;
+ blocks.forEach(b=>{
+  const lines=b.body?wrap(b.body,11):["Sem anotações"];
+  if(y-(34+lh*Math.min(lines.length,3))<M)np();
+  txt(b.h,M,13,1);txt(b.r,PW-M-wd(b.r,9.5),9.5,0,.35);
+  ops.push(`0.5 w ${M} ${(y-7).toFixed(1)} m ${PW-M} ${(y-7).toFixed(1)} l S`);y-=27;
+  lines.forEach(l=>{if(y<M+lh)np();if(l)txt(l,M+10,11,0,b.body?0:.5);y-=lh});
+  y-=14});
+ pages.forEach((o,i)=>o.push(`BT 0.5 g /F1 8 Tf ${M} 22 Td ${pdfHex("Página "+(i+1)+" de "+pages.length)} Tj ET`));
+ const objs=[];const add=o=>objs.push(o);
+ add("<< /Type /Catalog /Pages 2 0 R >>");add("");
+ add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+ add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+ const kids=[];
+ pages.forEach(o=>{const c=o.join("\n"),ci=add(`<< /Length ${c.length} >>\nstream\n${c}\nendstream`),pi=add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${ci} 0 R >>`);kids.push(pi+" 0 R")});
+ objs[1]=`<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${kids.length} >>`;
+ let out="%PDF-1.4\n";const off=[];objs.forEach((o,i)=>{off.push(out.length);out+=`${i+1} 0 obj\n${o}\nendobj\n`});
+ const xr=out.length;out+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+off.map(o=>String(o).padStart(10,"0")+" 00000 n \n").join("")+`trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
+ return new TextEncoder().encode(out)}
+async function sendPdf(bytes,name){
+ const blob=new Blob([bytes],{type:"application/pdf"});
+ try{const file=new File([blob],name,{type:"application/pdf"});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return}}catch(e){if(e&&e.name==="AbortError")return}
+ const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(u),60000)}
 function pdf(all){
- const box=$("#print"),now=new Date();let h=`<h1>Comandas de emergência</h1><div class="m">Emitido em ${now.toLocaleString("pt-BR")}</div>`,k=0;
- for(let n=1;n<=50;n++){const L=full(n);if(!L.length){if(all){k++;h+=`<div class="pt"><h2><span>Mesa ${p2(n)}</span><span>Setor ${secOf(n).id}</span></h2><div class="e">Sem anotações</div></div>`}continue}
-  L.forEach((c,j)=>{k++;h+=`<div class="pt"><h2><span>Mesa ${p2(n)}${L.length>1||c.n.trim()?" · "+esc(cn(c,j))+(L.length>1?" ("+(j+1)+"/"+L.length+")":""):""}</span><span>Setor ${secOf(n).id} · aberta às ${hm(c.at)}</span></h2><pre>${esc(c.t.trim())}</pre></div>`})}
- if(!k)h+=`<div class="pt"><div class="e">Nenhuma mesa ocupada.</div></div>`;
- box.innerHTML=h;const t=document.title,f=now.toISOString().slice(0,16).replace(/[-:T]/g,"");
- document.title="Comandas-"+f;setTimeout(()=>{window.print();document.title=t},50);
+ const now=new Date(),bl=[];
+ for(let n=1;n<=50;n++){const L=full(n);
+  if(!L.length){if(all)bl.push({h:"Mesa "+p2(n),r:"Setor "+secOf(n).id,body:""});continue}
+  L.forEach((c,j)=>bl.push({h:"Mesa "+p2(n)+(L.length>1||c.n.trim()?" · "+cn(c,j)+(L.length>1?" ("+(j+1)+"/"+L.length+")":""):""),r:"Setor "+secOf(n).id+" · aberta às "+hm(c.at),body:c.t.trim()}))}
+ if(!bl.length)bl.push({h:"Nenhuma mesa ocupada",r:"",body:""});
+ const f=now.toISOString().slice(0,16).replace(/[-:T]/g,"");
+ try{sendPdf(mkPdf(bl,"Comandas de emergência","Emitido em "+now.toLocaleString("pt-BR")),"Comandas-"+f+".pdf")}
+ catch(e){/* último recurso: impressão do navegador */
+  const box=$("#print");box.innerHTML=bl.map(b=>`<div class="pt"><h2><span>${esc(b.h)}</span><span>${esc(b.r)}</span></h2>${b.body?`<pre>${esc(b.body)}</pre>`:`<div class="e">Sem anotações</div>`}</div>`).join("");
+  const t=document.title;document.title="Comandas-"+f;setTimeout(()=>{window.print();document.title=t},50)}
 }
 document.addEventListener("click",e=>{
  const g=e.target.closest("[data-go]"),t=e.target.closest("[data-t]"),c=e.target.closest("[data-close]"),q=e.target.closest("[data-pdf]");
