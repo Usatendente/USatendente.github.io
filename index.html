@@ -151,14 +151,7 @@ const hm=ts=>new Date(ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-d
 const count=s=>{let c=0;for(let n=s.a;n<=s.b;n++)if(occ(n))c++;return c};
 const plural=(c,a,b)=>c==1?a:b;
 function render(a){
- const m=location.hash.match(/^#setor-(\d)$/),main=$("#main"),is3=location.hash==="#salao-3d";main.className=a?"enter":"";$(".wrap").classList.toggle("wide",is3);$(".hd").classList.toggle("wide",is3);document.querySelectorAll(".mt button").forEach(b=>b.setAttribute("aria-current",String((b.dataset.go==="salao-3d")===is3)));if(is3){show3D();document.title="Salão 3D · US Motoca";return}
- if(!m){
-  const tot=SEC.reduce((x,s)=>x+count(s),0);
-  main.innerHTML=`<section class="intro"><h2>Setores</h2><p>Escolha um setor e anote os pedidos à mão, mesa por mesa. Tudo fica salvo neste aparelho, mesmo ao atualizar a página.</p></section>
-  <div class="list${a?" a":""}">${SEC.map(s=>{const c=count(s),t=s.b-s.a+1;return `<button class="row s${s.id}" style="--i:${s.id}" data-go="setor-${s.id}"><span class="bd">${s.id}</span><span class="rt"><b>Setor ${s.id}</b><small>Mesas ${p2(s.a)} a ${p2(s.b)}</small><span class="bar"><i style="width:${c/t*100}%"></i></span></span><span class="cn"><b>${c}</b><small>${plural(c,"ocupada","ocupadas")}</small></span></button>`}).join("")}</div>
-  <p class="note">${tot} de 50 mesas com anotações. Gere o PDF antes de limpar as mesas se precisar guardar o registro.</p>`;
-  document.title="US Motoca · Comanda";return;
- }
+ const m=location.hash.match(/^#setor-(\d)$/)||[0,1],main=$("#main"),is3=location.hash==="#salao-3d";main.className=a?"enter":"";$(".wrap").classList.toggle("wide",is3);$(".hd").classList.toggle("wide",is3);document.querySelectorAll(".mt button").forEach(b=>b.setAttribute("aria-current",String((b.dataset.go==="salao-3d")===is3)));if(is3){show3D();document.title="Salão 3D · US Motoca";return}
  const s=SEC[m[1]-1];if(!s){location.hash="";return}
  let g="";for(let n=s.a;n<=s.b;n++){const o=occ(n);g+=`<button class="t${o?" occ":""}" style="--i:${n-s.a}" data-t="${n}"><span class="lb">Mesa</span><span class="num">${p2(n)}</span>${o?`<span class="pv">${esc(full(n).length>1?full(n).map((c,k)=>cn(c,k)).join(", "):((full(n)[0].n.trim()?full(n)[0].n.trim()+" · ":"")+full(n)[0].t.trim()))}</span>`:""}<span class="st">${o?"Ocupada · "+(full(n).length>1?full(n).length+" comandas · ":"")+hm(at0(n)):"Livre"}</span></button>`}
  const c=count(s);
