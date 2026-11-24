@@ -155,12 +155,13 @@ let T3=null,ld3=false;
 const U=.04,CX=382,CZ=366,wx=p=>(p-CX)*U,wz=p=>(p-CZ)*U,Y3=.4;
 const P1=[[324,250,28,28,45,2],[412,250,28,28,45,2],[501,248,28,28,45,2],[578,248,28,28,45,2],[690,173,24,24,0,2],[690,210,24,24,0,2],[675,251,54,24,0,2]];
 const P2=[[301,309,25,25,0,1],[375,310,25,25,0,1],[467,309,25,25,0,1],[677,321,25,54,0,4],[462,398,28,28,45,1],[551,397,28,28,45,1],[655,396,28,28,45,1],[120,325,80,68,0,2,"o"]];
-const P3=[[187,461,25,25,0,2],[187,550,25,25,0,2],[319,440,25,25,0,2],[318,498,25,62,0,1],[319,566,25,25,0,2],[395,498,25,62,0,1],[463,440,25,25,0,2],[547,508,80,68,0,2,"o"],[462,566,25,25,0,2],[567,440,25,25,0,2],[566,567,25,25,0,2],[680,445,25,25,0,2],[678,503,25,25,0,2],[677,561,25,25,0,2]];
+const P3=[[187,461,25,25,0,2],[187,550,25,25,0,2],[319,440,25,25,0,2],[318,498,25,62,0,1],[319,566,25,25,0,2],[395,498,25,62,0,1],[463,440,25,25,0,2],[547,508,80,68,0,2,"o"],[462,566,25,25,0,2],[567,440,25,25,0,2],[566,567,25,25,0,2],[680,445,25,25,0,2],[678,503,25,25,0,2],[677,561,25,25,0,2],[373,399,28,28,45,1]];/* última = mesa nova à esquerda da 22 (fica no fim da lista para não bagunçar a numeração salva) */
 const NKEY="comanda-3d-num-v2",NUM_DEF=null;/* NUM_DEF: cole aqui a lista de "Copiar numeração" (0 = sem número) para valer em todos os aparelhos */
 const nT=()=>P1.length+P2.length+P3.length,defNum=()=>Array(nT()).fill(null);
 const validNum=a=>{if(!Array.isArray(a)||a.length!==nT()||!a.every(x=>x===null||Number.isInteger(x)&&x>=1&&x<=50))return false;const b=a.filter(x=>x!==null);return new Set(b).size===b.length};
-function loadNum(){try{const a=JSON.parse(localStorage.getItem(NKEY));if(validNum(a))return a}catch(e){}return validNum(NUM_DEF)?NUM_DEF.slice():defNum()}
-let NUM=loadNum(),numMode=NUM.some(x=>x===null);
+let migrated=false;
+function loadNum(){try{const a=JSON.parse(localStorage.getItem(NKEY));if(validNum(a))return a;if(Array.isArray(a)&&a.length===nT()-1){const b=a.concat([null]);if(validNum(b)){migrated=true;return b}}}catch(e){}return validNum(NUM_DEF)?NUM_DEF.slice():defNum()}
+let NUM=loadNum(),numMode=NUM.some((x,i)=>x===null&&!(migrated&&i===nT()-1));
 const saveNum=()=>{try{localStorage.setItem(NKEY,JSON.stringify(NUM))}catch(e){}};
 function syncNum(){const b=$("#vNum");if(!b)return;const c=NUM.filter(x=>x!==null).length;b.textContent=numMode?"Concluir numeração":"Numerar mesas";b.classList.toggle("out",numMode);$("#vNumT").style.display=numMode?"flex":"none";
  $("#v3n").textContent=numMode?"Modo numeração: toque numa mesa e digite o número. "+c+" de "+nT()+" mesas numeradas (as com “?” ainda não têm número). Fica salvo neste aparelho.":"Toque numa mesa para anotar o pedido. Arraste para girar. Role o mouse ou use dois dedos para ampliar."}
@@ -182,11 +183,17 @@ function texWood(x1,y1,x2,y2){const c=document.createElement("canvas");c.width=c
  for(let r=0;r<8;r++){let x=-(Math.random()*120|0);while(x<256){const w=90+(Math.random()*90|0);g.fillStyle=cl[(Math.random()*5)|0];g.fillRect(x,r*32,w,32);g.strokeStyle="rgba(70,40,15,.45)";g.lineWidth=2;g.strokeRect(x,r*32,w,32);
   g.strokeStyle="rgba(90,55,20,.14)";g.lineWidth=1;for(let k=0;k<3;k++){const yy=r*32+6+k*9;g.beginPath();g.moveTo(x+4,yy);g.lineTo(x+w-4,yy+(Math.random()*3-1.5));g.stroke()}x+=w}}
  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set((x2-x1)*U/5,(y2-y1)*U/5);t.anisotropy=4;return new THREE.MeshStandardMaterial({map:t,roughness:.75})}
+function texTable(){const c=document.createElement("canvas");c.width=c.height=256;const g=c.getContext("2d"),cl=["#9a6633","#8d5a2b","#a67340","#946230","#84532a"];
+ for(let r=0;r<4;r++){g.fillStyle=cl[(r*3+1)%5];g.fillRect(0,r*64,256,64);
+  for(let k=0;k<14;k++){const yy=r*64+3+Math.random()*58;g.strokeStyle=Math.random()<.5?"rgba(60,30,8,.28)":"rgba(210,160,100,.22)";g.lineWidth=1+Math.random();g.beginPath();g.moveTo(0,yy);for(let x=0;x<=256;x+=32)g.lineTo(x,yy+(Math.random()*4-2));g.stroke()}
+  g.strokeStyle="rgba(40,20,5,.7)";g.lineWidth=3;g.beginPath();g.moveTo(0,r*64);g.lineTo(256,r*64);g.stroke()}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;return t}
 function texCem(x1,y1,x2,y2){const c=document.createElement("canvas");c.width=c.height=256;const g=c.getContext("2d");g.fillStyle="#b6b6b3";g.fillRect(0,0,256,256);
  for(let i=0;i<14;i++){g.fillStyle="rgba(110,110,106,.09)";g.beginPath();g.arc(Math.random()*256,Math.random()*256,20+Math.random()*40,0,7);g.fill()}
  for(let i=0;i<1400;i++){g.fillStyle=Math.random()<.5?"rgba(0,0,0,.07)":"rgba(255,255,255,.09)";g.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*2,1+Math.random()*2)}
  g.strokeStyle="rgba(0,0,0,.25)";g.lineWidth=3;g.strokeRect(0,0,256,256);
  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set((x2-x1)*U/5,(y2-y1)*U/5);t.anisotropy=4;return new THREE.MeshStandardMaterial({map:t,roughness:.95})}
+let TWOOD=null;
 function init3(){
  const slot=$("#v3slot");if(!slot)return;
  let R;try{R=new THREE.WebGLRenderer({antialias:true})}catch(e){slot.innerHTML='<p class="note" style="padding:20px">Este aparelho não conseguiu abrir o 3D.</p>';return}
@@ -229,7 +236,8 @@ function init3(){
   const ax=W>=H;
   for(let i=0;i<k;i++){const sw=ax?W/k:W,sd=ax?H:H/k,ox=ax?(i-(k-1)/2)*sw:0,oz=ax?0:(i-(k-1)/2)*sd;
    const geo=p[6]==="o"?new THREE.CylinderGeometry(.5,.5,.07,28):new THREE.BoxGeometry(sw-.05,.07,sd-.05);
-   const mat=new THREE.MeshStandardMaterial({color:0x5a3620,roughness:.55}),top=new THREE.Mesh(geo,mat);
+   if(!TWOOD)TWOOD=texTable();const tx=TWOOD.clone();tx.needsUpdate=true;tx.repeat.set(Math.max(.5,sw/1.1),Math.max(.5,sd/1.1));
+   const mat=new THREE.MeshStandardMaterial({color:0xffffff,map:tx,roughness:.6}),top=new THREE.Mesh(geo,mat);
    if(p[6]==="o")top.scale.set(sw-.05,1,sd-.05);
    top.position.set(ox,.55,oz);top.userData.i=ti;pk.push(top);tabs.push({mat,i:ti});
    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,.55,10),M(0x34200f));leg.position.set(ox,.27,oz);
@@ -260,7 +268,7 @@ function loop3(){
  const r=T3.r||T3.r0,s=Math.sin(T3.phi);
  T3.cam.position.set(r*s*Math.sin(T3.th),r*Math.cos(T3.phi),r*s*Math.cos(T3.th));T3.cam.lookAt(0,.4,0);
  const k=(Math.sin(performance.now()/330)+1)/2,a=new THREE.Color(0xcc3300).lerp(new THREE.Color(0xf58634),k);
- T3.tabs.forEach(o=>{if(numMode)o.mat.color.setHex(o.i===T3.hov?0xffd9a0:0xdbe8ff);else if(occ(NUM[o.i]))o.mat.color.copy(a);else o.mat.color.setHex(o.i===T3.hov?0xdddddd:0xffffff)});
+ T3.tabs.forEach(o=>{const e=o.mat.emissive;if(numMode)e.setHex(o.i===T3.hov?0x7a5a22:0x1d3f7a);else if(occ(NUM[o.i]))e.copy(a).multiplyScalar(.55);else e.setHex(o.i===T3.hov?0x3a3a3a:0x000000)});
  T3.R.render(T3.sc,T3.cam);
 }
 function show3D(){
