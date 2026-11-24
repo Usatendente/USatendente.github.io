@@ -76,6 +76,7 @@ dialog::backdrop{background:rgba(0,0,0,.6);animation:fade .25s}
 dialog[open]{animation:pop .3s cubic-bezier(.2,.9,.3,1.1)}
 @keyframes pop{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:none}}
 .mb{padding:24px}
+.cs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}.cs button{border:1px solid #111;background:#fff;color:#111;border-radius:48px;padding:7px 14px;font-weight:600;font-size:14px}.cs button[aria-current=true]{background:#111;color:#fff}.cs .add{border-style:dashed;color:var(--mute);border-color:var(--soft)}
 .mh{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .mh h3{margin:0;font-size:24px;font-weight:600}
 .tb{margin-top:16px;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--mute)}
@@ -131,11 +132,15 @@ textarea:focus{border-color:var(--red)}
 <script>
 const KEY="comanda-emergencia-v1";
 const SEC=[{id:1,a:1,b:14},{id:2,a:15,b:24},{id:3,a:25,b:50}];
-let D={};try{D=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){}
+const norm=o=>{const r={};for(const n in o){const v=o[n];let c=Array.isArray(v&&v.c)?v.c:(v&&v.t?[{t:v.t,at:v.at}]:[]);c=c.filter(x=>x&&typeof x.t==="string"&&x.t.trim()).map(x=>({t:x.t,at:x.at||Date.now()}));if(c.length)r[n]={c}}return r};
+let D={};try{D=norm(JSON.parse(localStorage.getItem(KEY))||{})}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}};
 const $=s=>document.querySelector(s),p2=n=>String(n).padStart(2,"0");
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const occ=n=>!!(D[n]&&D[n].t&&D[n].t.trim());
+const cms=n=>D[n]&&D[n].c||[];
+const occ=n=>cms(n).some(c=>c.t&&c.t.trim());
+const full=n=>cms(n).filter(c=>c.t.trim());
+const at0=n=>Math.min(...full(n).map(c=>c.at));
 const secOf=n=>SEC.find(s=>n>=s.a&&n<=s.b);
 const hm=ts=>new Date(ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 const count=s=>{let c=0;for(let n=s.a;n<=s.b;n++)if(occ(n))c++;return c};
@@ -150,7 +155,7 @@ function render(a){
   document.title="US Motoca · Comanda";return;
  }
  const s=SEC[m[1]-1];if(!s){location.hash="";return}
- let g="";for(let n=s.a;n<=s.b;n++){const o=occ(n);g+=`<button class="t${o?" occ":""}" style="--i:${n-s.a}" data-t="${n}"><span class="lb">Mesa</span><span class="num">${p2(n)}</span>${o?`<span class="pv">${esc(D[n].t.trim())}</span>`:""}<span class="st">${o?"Ocupada · "+hm(D[n].at):"Livre"}</span></button>`}
+ let g="";for(let n=s.a;n<=s.b;n++){const o=occ(n);g+=`<button class="t${o?" occ":""}" style="--i:${n-s.a}" data-t="${n}"><span class="lb">Mesa</span><span class="num">${p2(n)}</span>${o?`<span class="pv">${esc(full(n)[0].t.trim())}</span>`:""}<span class="st">${o?"Ocupada · "+(full(n).length>1?full(n).length+" comandas · ":"")+hm(at0(n)):"Livre"}</span></button>`}
  const c=count(s);
  main.innerHTML=`<nav class="cats">${SEC.map(x=>`<button class="cat s${x.id}" data-go="setor-${x.id}" ${x.id==s.id?'aria-current="true"':""}><span class="ic">${x.id}</span><span>Setor ${x.id}</span></button>`).join("")}</nav>
  <div class="sh"><h2>Setor ${s.id}</h2><p>Mesas ${p2(s.a)} a ${p2(s.b)} · ${c} ${plural(c,"ocupada","ocupadas")}</p></div>
@@ -198,7 +203,7 @@ function tapT(i){
  f.onkeydown=e=>{if(e.key==="Enter")$("#nok").click()};
  if($("#nsp"))$("#nsp").onclick=()=>{setSplit(sk,true);d.close()};
  if($("#njn"))$("#njn").onclick=()=>{const o=NUM[halfU(hk,1)];if(o!==null&&occ(o)&&!confirm("A mesa "+p2(o)+" tem anotações. Ao juntar, o desenho fica só com um número e essa mesa deixa de aparecer. Juntar mesmo assim?"))return;setSplit(hk,false);d.close()};
- d.showModal();f.select();
+ curN=null;d.showModal();f.select();
 }
 function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 function label(t,sx,dark,cw){cw=cw||256;const c=document.createElement("canvas");c.width=cw;c.height=96;const g=c.getContext("2d");
@@ -322,25 +327,35 @@ function show3D(){
  document.head.appendChild(s);
 }
 
-function openT(n){
+let curN=null;
+const prune=n=>{if(D[n]){D[n].c=(D[n].c||[]).filter(c=>c.t&&c.t.trim());if(!D[n].c.length)delete D[n]}};
+function openT(n,i){const d=$("#ed");curN=n;draw(n,i||0);if(!d.open)d.showModal()}
+function draw(n,i){
  const s=secOf(n),d=$("#ed");
+ if(!cms(n).length)D[n]={c:[{t:"",at:Date.now()}]};
+ const L=D[n].c;i=Math.min(Math.max(i,0),L.length-1);
+ const tabs=L.map((c,k)=>`<button data-k="${k}" aria-current="${k===i}">Comanda ${k+1}</button>`).join("")+`<button class="add" id="cadd">+ Nova comanda</button>`;
  $("#edw").innerHTML=`<div class="mb"><div class="mh"><h3>Pedido</h3><button class="link" data-close>Fechar</button></div>
- <div class="tb">Mesa ${p2(n)} · Setor ${s.id}</div>
- <textarea id="ta" placeholder="Itens, quantidades, observações e valores" aria-label="Anotações da mesa ${p2(n)}" spellcheck="false"></textarea>
+ <div class="tb">Mesa ${p2(n)} · Setor ${s.id}${L.length>1?" · "+L.length+" comandas":""}</div>
+ <div class="cs">${tabs}</div>
+ <textarea id="ta" placeholder="Itens, quantidades, observações e valores" aria-label="Anotações da mesa ${p2(n)}, comanda ${i+1}" spellcheck="false"></textarea>
  <div class="sv" id="sv">Salvo automaticamente</div>
- <div class="btns"><button class="pill" id="fin">Finalizar atendimento</button></div></div>`;
- const ta=$("#ta");ta.value=D[n]?D[n].t:"";
- ta.oninput=()=>{const e=D[n]||(D[n]={t:"",at:Date.now()});if(!e.t.trim())e.at=Date.now();e.t=ta.value;save();$("#sv").textContent="Salvo às "+hm(Date.now())};
- let arm;$("#fin").onclick=function(){
-  if(!this.classList.contains("warn")){this.classList.add("warn");this.textContent="Confirmar: limpar mesa";arm=setTimeout(()=>{this.classList.remove("warn");this.textContent="Finalizar atendimento"},4000);return}
-  clearTimeout(arm);delete D[n];save();d.close();
- };
- d.showModal();if(!ta.value)ta.focus();
+ <div class="btns"><button class="pill" id="fin">${L.length>1?"Finalizar comanda "+(i+1):"Finalizar atendimento"}</button>${L.length>1?'<button class="pill out" id="fall">Finalizar a mesa inteira</button>':""}</div></div>`;
+ document.querySelectorAll("#edw [data-k]").forEach(b=>b.onclick=()=>draw(n,+b.dataset.k));
+ $("#cadd").onclick=()=>{if(L[L.length-1].t.trim())L.push({t:"",at:Date.now()});draw(n,L.length-1)};
+ const ta=$("#ta");ta.value=L[i].t;
+ ta.oninput=()=>{const e=L[i];if(!e.t.trim())e.at=Date.now();e.t=ta.value;save();$("#sv").textContent="Salvo às "+hm(Date.now())};
+ const arm=(btn,txt,cf,fn)=>{let t;btn.onclick=function(){
+  if(!this.classList.contains("warn")){this.classList.add("warn");this.textContent=cf;t=setTimeout(()=>{this.classList.remove("warn");this.textContent=txt},4000);return}
+  clearTimeout(t);fn()}};
+ arm($("#fin"),$("#fin").textContent,L.length>1?"Confirmar: limpar comanda "+(i+1):"Confirmar: limpar mesa",()=>{L.splice(i,1);if(!L.length){delete D[n];save();d.close()}else{save();draw(n,i-1)}});
+ if($("#fall"))arm($("#fall"),"Finalizar a mesa inteira","Confirmar: limpar todas",()=>{delete D[n];save();d.close()});
+ if(!ta.value)ta.focus();
 }
 function pdf(all){
  const box=$("#print"),now=new Date();let h=`<h1>Comandas de emergência</h1><div class="m">Emitido em ${now.toLocaleString("pt-BR")}</div>`,k=0;
- for(let n=1;n<=50;n++){const o=occ(n);if(!all&&!o)continue;k++;
-  h+=`<div class="pt"><h2><span>Mesa ${p2(n)}</span><span>Setor ${secOf(n).id}${o?" · aberta às "+hm(D[n].at):""}</span></h2>${o?`<pre>${esc(D[n].t.trim())}</pre>`:`<div class="e">Sem anotações</div>`}</div>`}
+ for(let n=1;n<=50;n++){const L=full(n);if(!L.length){if(all){k++;h+=`<div class="pt"><h2><span>Mesa ${p2(n)}</span><span>Setor ${secOf(n).id}</span></h2><div class="e">Sem anotações</div></div>`}continue}
+  L.forEach((c,j)=>{k++;h+=`<div class="pt"><h2><span>Mesa ${p2(n)}${L.length>1?" · Comanda "+(j+1)+" de "+L.length:""}</span><span>Setor ${secOf(n).id} · aberta às ${hm(c.at)}</span></h2><pre>${esc(c.t.trim())}</pre></div>`})}
  if(!k)h+=`<div class="pt"><div class="e">Nenhuma mesa ocupada.</div></div>`;
  box.innerHTML=h;const t=document.title,f=now.toISOString().slice(0,16).replace(/[-:T]/g,"");
  document.title="Comandas-"+f;setTimeout(()=>{window.print();document.title=t},50);
@@ -357,12 +372,12 @@ $("#searchBtn").onclick=()=>{const d=$("#sd"),f=$("#sn");f.value="";d.showModal(
 $("#sx").onclick=()=>$("#sd").close();
 $("#sok").onclick=()=>{const f=$("#sn"),v=Math.round(+f.value);if(f.value.trim()===""||!(v>=1&&v<=50)){f.focus();return}$("#sd").close();openT(v)};
 $("#sn").onkeydown=e=>{if(e.key==="Enter")$("#sok").click()};
-$("#ed").addEventListener("close",()=>render());
+$("#ed").addEventListener("close",()=>{if(curN!=null){prune(curN);save();curN=null}render()});
 /* no celular o "clique" do toque que abriu o pop-up caía em cima do botão dele e o fechava na hora: ignora cliques nos primeiros 0,6 s */
 {const d=$("#ed"),sm=d.showModal.bind(d);let at=0;d.showModal=()=>{at=performance.now();sm()};
  d.addEventListener("click",e=>{if(performance.now()-at<600){e.stopPropagation();e.preventDefault()}},true)}
 addEventListener("hashchange",()=>render(true));
-addEventListener("storage",e=>{if(e.key===KEY){try{D=JSON.parse(e.newValue)||{}}catch(x){}render()}});
+addEventListener("storage",e=>{if(e.key===KEY){try{D=norm(JSON.parse(e.newValue)||{})}catch(x){}render()}});
 render(true);
 if("serviceWorker" in navigator&&location.protocol.startsWith("http")){try{navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}}
 </script>
